@@ -51,7 +51,7 @@ const CATEGORY_HORIZONS: Record<string, number> = {
 };
 
 const Results: React.FC<Props> = ({ results, profile, textAnswers, answers, dilemmas, totalTime, onRestart }) => {
-  const { matrix, roles, horizons, consistency, predominantHorizon, categories, blocks, roleValidation, omissionAnalysis } = results;
+  const { matrix, roles, horizons, consistency, predominantHorizon, categories, blocks, roleValidation, omissionAnalysis, speedAnalysis } = results;
   const printRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
@@ -283,6 +283,12 @@ const Results: React.FC<Props> = ({ results, profile, textAnswers, answers, dile
     horizon: (data as BlockResult).horizon
   })).sort((a, b) => b.score - a.score);
 
+  // ICD Calculation helpers
+  const totalAnswers = speedAnalysis ? (speedAnalysis.instinctive + speedAnalysis.natural + speedAnalysis.reflexive) : 1;
+  const icdInstinctivePct = Math.round((speedAnalysis.instinctive / totalAnswers) * 100) || 0;
+  const icdNaturalPct = Math.round((speedAnalysis.natural / totalAnswers) * 100) || 0;
+  const icdReflexivePct = Math.round((speedAnalysis.reflexive / totalAnswers) * 100) || 0;
+
   // SMART PDF DOWNLOAD (ELEMENT-BY-ELEMENT)
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
@@ -434,10 +440,11 @@ const Results: React.FC<Props> = ({ results, profile, textAnswers, answers, dile
           </div>
         </div>
 
-        {/* DECISION READINESS INDEX (New Card) */}
-        <div className={`${styles.bgCard} rounded-xl p-8 border flex flex-col md:flex-row items-center gap-8 shadow-lg relative overflow-hidden`}>
-            {/* Index Visual */}
-            <div className="relative size-32 md:size-40 flex items-center justify-center">
+        {/* DECISION READINESS INDEX & ICD (Updated Card) */}
+        <div className={`${styles.bgCard} rounded-xl p-8 border flex flex-col lg:flex-row items-center gap-8 shadow-lg relative overflow-hidden`}>
+            
+            {/* Readiness Circle */}
+            <div className="relative size-32 md:size-40 flex items-center justify-center shrink-0">
                 <svg className="size-full transform -rotate-90" viewBox="0 0 36 36">
                     <path
                         className="text-gray-700"
@@ -463,18 +470,11 @@ const Results: React.FC<Props> = ({ results, profile, textAnswers, answers, dile
             </div>
 
             {/* Analysis Text */}
-            <div className="flex-1 space-y-4">
-                <div className="flex items-center justify-between">
+            <div className="flex-1 space-y-4 w-full">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
-                        <h3 className={`text-xl font-bold ${styles.textPrimary}`}>Índice de Prontidão Decisória</h3>
-                        <div className="group relative cursor-help">
-                             <span className="material-symbols-outlined text-gray-500 text-sm">help</span>
-                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                                 Mede sua capacidade de tomar decisões sob pressão de tempo (10s). Omissões reduzem este índice.
-                             </div>
-                        </div>
+                        <h3 className={`text-xl font-bold ${styles.textPrimary}`}>Prontidão & Convicção</h3>
                     </div>
-                    
                     {/* TOTAL TIME DISPLAY */}
                     {totalTime !== undefined && (
                         <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${printMode ? 'bg-gray-100 border-gray-300' : 'bg-surface-darker border-gray-700'}`}>
@@ -485,20 +485,30 @@ const Results: React.FC<Props> = ({ results, profile, textAnswers, answers, dile
                         </div>
                     )}
                 </div>
+
+                <div className={`grid grid-cols-3 gap-2 p-4 rounded-lg border ${styles.bgSub} ${styles.border}`}>
+                    <div className="text-center">
+                        <span className="block text-xs uppercase font-bold text-green-500 mb-1">Instintivo</span>
+                        <span className={`text-xl font-black ${styles.textPrimary}`}>{icdInstinctivePct}%</span>
+                        <div className="w-full h-1 bg-gray-700 rounded-full mt-1 overflow-hidden"><div style={{width: `${icdInstinctivePct}%`}} className="h-full bg-green-500"></div></div>
+                    </div>
+                    <div className="text-center border-l border-gray-700">
+                        <span className="block text-xs uppercase font-bold text-blue-500 mb-1">Natural</span>
+                        <span className={`text-xl font-black ${styles.textPrimary}`}>{icdNaturalPct}%</span>
+                         <div className="w-full h-1 bg-gray-700 rounded-full mt-1 overflow-hidden"><div style={{width: `${icdNaturalPct}%`}} className="h-full bg-blue-500"></div></div>
+                    </div>
+                    <div className="text-center border-l border-gray-700">
+                        <span className="block text-xs uppercase font-bold text-purple-500 mb-1">Reflexivo</span>
+                        <span className={`text-xl font-black ${styles.textPrimary}`}>{icdReflexivePct}%</span>
+                         <div className="w-full h-1 bg-gray-700 rounded-full mt-1 overflow-hidden"><div style={{width: `${icdReflexivePct}%`}} className="h-full bg-purple-500"></div></div>
+                    </div>
+                </div>
                 
                 <p className={`text-sm leading-relaxed ${styles.textSecondary}`}>
+                    <strong>ICD (Índice de Convicção Decisória):</strong> {icdInstinctivePct > 50 ? "Suas respostas são predominantemente instintivas, indicando alta certeza ou impulsividade." : icdReflexivePct > 50 ? "Você tende a refletir profundamente antes de decidir, indicando cautela ou dúvida." : "Você apresenta um equilíbrio saudável entre intuição e análise."}
+                    <br/>
                     {omissionAnalysis.interpretation}
                 </p>
-
-                {omissionAnalysis.mainImpactedCategories.length > 0 && (
-                    <div className={`p-4 rounded-lg border text-xs ${printMode ? 'bg-red-50 border-red-200 text-red-800' : 'bg-red-900/10 border-red-900/30 text-red-300'}`}>
-                        <span className="font-bold flex items-center gap-1 mb-1">
-                            <span className="material-symbols-outlined text-sm">warning</span>
-                            Pontos de Hesitação:
-                        </span>
-                        Você tendeu a omitir respostas sob pressão nos temas: <span className="font-bold">{omissionAnalysis.mainImpactedCategories.join(', ')}</span>.
-                    </div>
-                )}
             </div>
         </div>
 

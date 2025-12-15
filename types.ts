@@ -98,6 +98,12 @@ export interface OmissionAnalysis {
     interpretation: string; // Qualitative text
 }
 
+export interface SpeedAnalysis {
+  instinctive: number; // < 30% do tempo
+  natural: number;     // 30% - 75% do tempo
+  reflexive: number;   // > 75% do tempo
+}
+
 export interface ConsistencyResult {
   stdDev: number;
   status: 'Consistente' | 'Balanceado' | 'Desbalanceado' | 'Fragmentado' | 'Contraditório';
@@ -121,4 +127,5 @@ export interface ScoreResult {
   blocks: Record<string, BlockResult>; // Changed to store score and horizon
   categories: Record<string, number>;
   omissionAnalysis: OmissionAnalysis; // New Field for Time/Pressure analysis
+  speedAnalysis: SpeedAnalysis; // New Field for ICD
 }

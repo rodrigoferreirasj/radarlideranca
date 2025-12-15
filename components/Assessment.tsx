@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Question, Answers, Dilemma, DilemmaOption, TextAnswers, DescriptiveQuestion } from '../types';
+import { Question, Answers, Dilemma, DilemmaOption, TextAnswers, DescriptiveQuestion, SpeedAnalysis } from '../types';
 import { descriptiveQuestions } from '../data/descriptive';
 
 interface Props {
   questions: Question[];
   dilemmas: Dilemma[];
-  onComplete: (answers: Answers, textAnswers: TextAnswers, totalTime: number) => void;
+  onComplete: (answers: Answers, textAnswers: TextAnswers, totalTime: number, speedAnalysis: SpeedAnalysis) => void;
   onBack: () => void;
   is360?: boolean;
 }
 
 type Phase = 'questions' | 'dilemmas' | 'descriptive';
 
-const QUESTION_TIME = 10;
-const DILEMMA_TIME = 30;
+// UPDATED TIMES
+const QUESTION_TIME = 20;
+const DILEMMA_TIME = 40;
 
 const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, is360 = false }) => {
   const [phase, setPhase] = useState<Phase>('questions');
@@ -28,10 +29,20 @@ const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, 
   const [currentDIndex, setCurrentDIndex] = useState(0);
   const [currentDescIndex, setCurrentDescIndex] = useState(0);
 
-  const [answers, setAnswers] = useState<Answers>({});
+  const [answers, setAnswers] = useState<Answers>(() => {
+    // Attempt to recover from simple state loss if props remount, though App controls this
+    return {};
+  });
   const [textAnswers, setTextAnswers] = useState<TextAnswers>({});
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   
+  // Speed Analysis State
+  const [speedAnalysis, setSpeedAnalysis] = useState<SpeedAnalysis>({
+      instinctive: 0,
+      natural: 0,
+      reflexive: 0
+  });
+
   // Lock state to prevent double clicks/race conditions
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -40,8 +51,6 @@ const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, 
   const [totalTimeTaken, setTotalTimeTaken] = useState(0); // Accumulator for total time
   const [consecutiveOmissions, setConsecutiveOmissions] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  // Timer ref not strictly needed with the split-effect approach, but kept for cleanup safety if needed
-  const timerRef = useRef<number | null>(null);
 
   // Initialize and Shuffle Everything once on mount
   useEffect(() => {
@@ -61,8 +70,8 @@ const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, 
   // EFFECT 1: RESET TIMER ON QUESTION CHANGE
   useEffect(() => {
       // Whenever the index or phase changes, reset the clock based on phase
-      setTimeLeft(phase === 'dilemmas' ? DILEMMA_TIME : QUESTION_TIME);
-  }, [currentQIndex, currentDIndex, phase]);
+      setTimeLeft(currentLimit);
+  }, [currentQIndex, currentDIndex, phase, currentLimit]);
 
   // EFFECT 2: COUNTDOWN LOGIC (TICK)
   useEffect(() => {
@@ -91,7 +100,6 @@ const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, 
       return () => window.clearTimeout(tick);
       // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, isPaused, isTransitioning, phase, currentQuestion, currentDilemma]); 
-  // Dependency on 'timeLeft' ensures the effect re-runs every second, creating the loop.
 
   const handleTimeout = () => {
       // Determine ID
@@ -120,7 +128,6 @@ const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, 
   const handleResume = () => {
       setConsecutiveOmissions(0);
       setIsPaused(false);
-      // Logic to restart current question timer happens automatically via useEffect dependency on isPaused
   };
 
   const shuffledOptions = useMemo(() => {
@@ -128,9 +135,20 @@ const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, 
     return [...currentDilemma.options].sort(() => Math.random() - 0.5);
   }, [currentDilemma?.id]);
 
-  if (shuffledQuestions.length === 0 || shuffledDilemmas.length === 0 || shuffledDescriptive.length === 0) {
-      return <div className="text-white text-center mt-20 animate-pulse">Carregando avaliação...</div>;
-  }
+  // --- Speed Analysis Helper ---
+  const updateSpeedAnalysis = (timeSpent: number, limit: number) => {
+      // Logic:
+      // Questions (20s): < 6s (30%) Instinctive, 6-15s (75%) Natural, > 15s Reflexive
+      // Dilemmas (40s): < 12s (30%) Instinctive, 12-30s (75%) Natural, > 30s Reflexive
+      
+      const percentage = timeSpent / limit;
+
+      setSpeedAnalysis(prev => {
+          if (percentage < 0.30) return { ...prev, instinctive: prev.instinctive + 1 };
+          if (percentage <= 0.75) return { ...prev, natural: prev.natural + 1 };
+          return { ...prev, reflexive: prev.reflexive + 1 };
+      });
+  };
 
   // --- Handlers for Questions Phase ---
 
@@ -141,8 +159,9 @@ const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, 
     setConsecutiveOmissions(0);
 
     // Track time spent (Max - Left)
-    const timeSpent = QUESTION_TIME - timeLeft;
+    const timeSpent = currentLimit - timeLeft;
     setTotalTimeTaken(prev => prev + timeSpent);
+    updateSpeedAnalysis(timeSpent, currentLimit);
 
     const newAnswers = { ...answers, [currentQuestion.id]: score };
     setAnswers(newAnswers);
@@ -160,8 +179,9 @@ const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, 
     setConsecutiveOmissions(0);
 
     // Track time spent
-    const timeSpent = DILEMMA_TIME - timeLeft;
+    const timeSpent = currentLimit - timeLeft;
     setTotalTimeTaken(prev => prev + timeSpent);
+    updateSpeedAnalysis(timeSpent, currentLimit);
     
     const newAnswers = { ...answers, [currentDilemma.id]: score };
     setAnswers(newAnswers);
@@ -193,7 +213,7 @@ const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, 
         setCurrentQIndex(prev => prev + 1);
       } else {
         if (is360) {
-            onComplete(currentAnswersState, textAnswers, totalTimeTaken);
+            onComplete(currentAnswersState, textAnswers, totalTimeTaken, speedAnalysis);
         } else {
             setPhase('dilemmas');
             setCurrentDIndex(0);
@@ -211,7 +231,7 @@ const Assessment: React.FC<Props> = ({ questions, dilemmas, onComplete, onBack, 
       if (currentDescIndex < shuffledDescriptive.length - 1) {
         setCurrentDescIndex(prev => prev + 1);
       } else {
-        onComplete(currentAnswersState, textAnswers, totalTimeTaken);
+        onComplete(currentAnswersState, textAnswers, totalTimeTaken, speedAnalysis);
       }
     }
   };

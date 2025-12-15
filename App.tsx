@@ -4,7 +4,7 @@ import PersonalInfo from './components/PersonalInfo';
 import Assessment from './components/Assessment';
 import Results from './components/Results';
 import HelpModal from './components/HelpModal';
-import { LeadershipLevel, UserProfile, Answers, Question, TextAnswers } from './types';
+import { LeadershipLevel, UserProfile, Answers, Question, TextAnswers, SpeedAnalysis } from './types';
 import { questions as allQuestions } from './data/questions';
 import { questions360 } from './data/questions360';
 import { dilemmas } from './data/dilemmas';
@@ -36,6 +36,9 @@ const App: React.FC = () => {
 
   // Store total time taken for the assessment
   const [totalTime, setTotalTime] = useState<number>(0);
+  
+  // Store Speed Analysis
+  const [speedAnalysis, setSpeedAnalysis] = useState<SpeedAnalysis>({ instinctive: 0, natural: 0, reflexive: 0 });
 
   // Help Modal State
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -79,13 +82,15 @@ const App: React.FC = () => {
     setAnswers({});
     setTextAnswers({});
     setTotalTime(0);
+    setSpeedAnalysis({ instinctive: 0, natural: 0, reflexive: 0 });
     setStep('assessment');
   };
 
-  const handleAssessmentComplete = (userAnswers: Answers, userTextAnswers: TextAnswers, timeTaken: number) => {
+  const handleAssessmentComplete = (userAnswers: Answers, userTextAnswers: TextAnswers, timeTaken: number, speedData: SpeedAnalysis) => {
     setAnswers(userAnswers);
     setTextAnswers(userTextAnswers);
     setTotalTime(timeTaken);
+    setSpeedAnalysis(speedData);
     setStep('results');
   };
 
@@ -95,6 +100,7 @@ const App: React.FC = () => {
     setAnswers({});
     setTextAnswers({});
     setTotalTime(0);
+    setSpeedAnalysis({ instinctive: 0, natural: 0, reflexive: 0 });
     setStep('welcome');
     // Clear Storage
     localStorage.removeItem('app_step');
@@ -105,8 +111,8 @@ const App: React.FC = () => {
 
   const scores = useMemo(() => {
     if (!profile) return null;
-    return calculateScores(filteredQuestions, dilemmas, answers, profile.level);
-  }, [filteredQuestions, answers, profile]);
+    return calculateScores(filteredQuestions, dilemmas, answers, profile.level, speedAnalysis);
+  }, [filteredQuestions, answers, profile, speedAnalysis]);
 
   return (
     <div className="flex flex-col min-h-screen font-sans bg-background-dark text-white selection:bg-primary selection:text-white">

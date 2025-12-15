@@ -17,6 +17,24 @@ const PersonalInfo: React.FC<Props> = ({ onComplete }) => {
   const [is360, setIs360] = useState(false);
   const [targetLeaderName, setTargetLeaderName] = useState('');
 
+  const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+    if (value.length > 11) value = value.slice(0, 11); // Limita a 11 dígitos
+
+    // Aplica a máscara (XX) XXXXX-XXXX
+    if (value.length > 10) {
+      value = value.replace(/^(\d\d)(\d{5})(\d{4}).*/, '($1) $2-$3');
+    } else if (value.length > 6) {
+      value = value.replace(/^(\d\d)(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+    } else if (value.length > 2) {
+      value = value.replace(/^(\d\d)(\d{0,5}).*/, '($1) $2');
+    } else if (value.length > 0) {
+      value = value.replace(/^(\d*)/, '($1');
+    }
+    
+    setWhatsapp(value);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (is360) {
@@ -218,7 +236,8 @@ const PersonalInfo: React.FC<Props> = ({ onComplete }) => {
                     id="whatsapp"
                     required={!is360}
                     value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
+                    onChange={handleWhatsappChange}
+                    maxLength={15}
                     className="block w-full pl-10 pr-4 py-3 bg-surface-dark border border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-white placeholder-slate-500 transition-shadow sm:text-sm"
                     placeholder="(00) 00000-0000"
                   />
@@ -368,7 +387,7 @@ const PersonalInfo: React.FC<Props> = ({ onComplete }) => {
                   <p className="text-xs text-slate-400 uppercase tracking-wider">Pilares</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">1h</p>
+                  <p className="text-2xl font-bold text-white">1h 40m</p>
                   <p className="text-xs text-slate-400 uppercase tracking-wider">Tempo Estimado</p>
                 </div>
               </div>

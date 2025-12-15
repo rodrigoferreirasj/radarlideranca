@@ -1,4 +1,4 @@
-import { Answers, Question, Dilemma, ScoreResult, LeadershipLevel, RoleResult, MatrixResult, ConsistencyResult, BlockResult, RoleValidation, CategoryValidation, OmissionAnalysis } from '../types';
+import { Answers, Question, Dilemma, ScoreResult, LeadershipLevel, RoleResult, MatrixResult, ConsistencyResult, BlockResult, RoleValidation, CategoryValidation, OmissionAnalysis, SpeedAnalysis } from '../types';
 
 // Map for Internal Consistency Checks (Specific Pairs Logic)
 const CONSISTENCY_MAP: Record<number, number[]> = {
@@ -49,7 +49,8 @@ export const calculateScores = (
     questions: Question[], 
     dilemmas: Dilemma[],
     answers: Answers, 
-    userLevel: LeadershipLevel
+    userLevel: LeadershipLevel,
+    speedAnalysis: SpeedAnalysis = { instinctive: 0, natural: 0, reflexive: 0 }
 ): ScoreResult => {
   
   // Data Aggregation Structures
@@ -481,6 +482,7 @@ export const calculateScores = (
     predominantHorizon,
     blocks: blocksFinal,
     categories: categoriesFinal,
-    omissionAnalysis
+    omissionAnalysis,
+    speedAnalysis // New field
   };
 };
