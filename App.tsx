@@ -1,9 +1,11 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import Welcome from './components/Welcome';
 import PersonalInfo from './components/PersonalInfo';
 import Assessment from './components/Assessment';
 import Results from './components/Results';
 import HelpModal from './components/HelpModal';
+import Login from './components/Login';
 import { LeadershipLevel, UserProfile, Answers, Question, TextAnswers, SpeedAnalysis } from './types';
 import { questions as allQuestions } from './data/questions';
 import { questions360 } from './data/questions360';
@@ -13,6 +15,10 @@ import { calculateScores } from './services/scoringService';
 type Step = 'welcome' | 'info' | 'assessment' | 'results';
 
 const App: React.FC = () => {
+  // Authentication State
+  // ALTERAÇÃO: Inicia sempre como false e não busca no localStorage para forçar login no refresh
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
   // Initialize state from localStorage if available
   const [step, setStep] = useState<Step>(() => {
     const saved = localStorage.getItem('app_step');
@@ -45,8 +51,10 @@ const App: React.FC = () => {
 
   // Effects to save state changes
   useEffect(() => {
-    localStorage.setItem('app_step', step);
-  }, [step]);
+    if (isAuthenticated) {
+        localStorage.setItem('app_step', step);
+    }
+  }, [step, isAuthenticated]);
 
   useEffect(() => {
     if (profile) localStorage.setItem('app_profile', JSON.stringify(profile));
@@ -60,6 +68,12 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('app_text_answers', JSON.stringify(textAnswers));
   }, [textAnswers]);
+
+  // Handle Login Success
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    // ALTERAÇÃO: Não salvamos mais no localStorage para que o refresh peça login novamente
+  };
 
   // Logic: Filter questions based on Level OR use 360 Questions
   const filteredQuestions = useMemo(() => {
@@ -101,18 +115,27 @@ const App: React.FC = () => {
     setTextAnswers({});
     setTotalTime(0);
     setSpeedAnalysis({ instinctive: 0, natural: 0, reflexive: 0 });
-    setStep('welcome');
+    
     // Clear Storage
     localStorage.removeItem('app_step');
     localStorage.removeItem('app_profile');
     localStorage.removeItem('app_answers');
     localStorage.removeItem('app_text_answers');
+    
+    // ALTERAÇÃO: Resetar passo para welcome e DESLOGAR usuário
+    setStep('welcome');
+    setIsAuthenticated(false);
   };
 
   const scores = useMemo(() => {
     if (!profile) return null;
     return calculateScores(filteredQuestions, dilemmas, answers, profile.level, speedAnalysis);
   }, [filteredQuestions, answers, profile, speedAnalysis]);
+
+  // If not authenticated, show Login screen
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="flex flex-col min-h-screen font-sans bg-background-dark text-white selection:bg-primary selection:text-white">
@@ -153,7 +176,12 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-grow flex flex-col items-center justify-start relative">
         {step === 'welcome' && <Welcome onStart={handleStart} />}
-        {step === 'info' && <PersonalInfo onComplete={handleInfoComplete} />}
+        {step === 'info' && (
+            <PersonalInfo 
+                onComplete={handleInfoComplete} 
+                onBack={() => setStep('welcome')} // Passando a função de voltar
+            />
+        )}
         {step === 'assessment' && (
             <Assessment 
                 questions={filteredQuestions} 

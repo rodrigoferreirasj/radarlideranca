@@ -3,9 +3,10 @@ import { LeadershipLevel, UserProfile } from '../types';
 
 interface Props {
   onComplete: (profile: UserProfile) => void;
+  onBack: () => void; // Nova prop
 }
 
-const PersonalInfo: React.FC<Props> = ({ onComplete }) => {
+const PersonalInfo: React.FC<Props> = ({ onComplete, onBack }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
@@ -343,7 +344,16 @@ const PersonalInfo: React.FC<Props> = ({ onComplete }) => {
             )}
           </div>
 
-          <div className="pt-6">
+          <div className="pt-6 flex flex-col sm:flex-row items-center gap-4">
+            <button
+                type="button"
+                onClick={onBack}
+                className="w-full sm:w-auto px-6 py-3.5 border border-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+            >
+                <span className="material-symbols-outlined">arrow_back</span>
+                Voltar
+            </button>
+
             <button
               type="submit"
               disabled={is360 ? !targetLeaderName : (!name || !email || !company || !role || !whatsapp || !level)}

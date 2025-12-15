@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ComposedChart, Scatter, ZAxis, Cell, ReferenceLine, BarChart, Bar, Legend, Area, AreaChart, ScatterChart } from 'recharts';
 import { ScoreResult, UserProfile, RoleResult, LeadershipLevel, TextAnswers, BlockResult, Answers, Dilemma, CategoryValidation } from '../types';
@@ -135,7 +136,7 @@ const Results: React.FC<Props> = ({ results, profile, textAnswers, answers, dile
     };
 
     // Trigger automation on mount
-    // sendResultsEmail(); // DISABLED TEMPORARILY AS REQUESTED
+    sendResultsEmail();
   }, []); // Empty dependency array = runs once on mount
 
   // Identify Low Score Dilemmas (Score = 1)
